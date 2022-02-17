@@ -9,13 +9,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 const USER_REGEX = /^[A-z][A-z0-9-_]{3,23}$/;
 const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%]).{8,24}$/;
+
+// end point for register
 const REGISTER_URL = "/register";
 
 function Register() {
   // User input > allow us to set the focus on the user input, when the component loads.
-  const userRef = useRef();
+  const userRef = useRef(); // <input />
   // User input > allow us to set the focus on that to announce errors.
-  const errRef = useRef();
+  const errRef = useRef(); // <p />
 
   // name validates or not
   // whether we have focus on the input field or not
@@ -35,15 +37,22 @@ function Register() {
   const [success, setSuccess] = useState(false);
 
   // setting focus when the component loads ONLY []
+  // Uncaught TypeError: Cannot read properties of undefined (reading 'focus') -> if no ref={userRef} inside input
+  // 처음에, useRef() 훅스를 불러온다 -> 빈깡통을 넣는다 -> 내가 focus를 주고 싶은곳을 찾아가서 -> ref값을 넣어준다. -> 리로딩이 되면 -> 태그에 focus를 준다.
+
   useEffect(() => {
     userRef.current.focus();
   }, []);
 
   // validate user name. anytime, if any changes -> it will check the validation of the field.
+  // 타이핑 치는, 유저가 바뀔 때 마다, 정규 표현식 아이컨이 실시간으로 바뀐다. -> [user] -> setValidName(USER_REGEX.test(user));
   useEffect(() => {
     setValidName(USER_REGEX.test(user));
   }, [user]);
 
+  // why? : 비밀번호 변경이 될때마다, 1. 변화를 인지해줘야함. 2. 컨펌 비밀번호도 변화를 인지 시켜줘야함.
+  // 로딩 될 때마다, [pwd, matchPwd] 변화가 있는지 확인을 먼저 한다.
+  // 변화되는게 있다면, 다시 정규식을 때려서, 새로운 비밀번호를 확인한다. 비밀번호가 컴펀이 되면, state를 변경시켜준다.
   useEffect(() => {
     setValidPwd(PWD_REGEX.test(pwd));
     setValidMatch(pwd === matchPwd);
