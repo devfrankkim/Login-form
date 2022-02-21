@@ -5,13 +5,15 @@ import {
   faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-// import axios from "./api/axios";
+import { Link } from "react-router-dom";
+import axios from "axios";
+import Login from "./Login";
 
 const USER_REGEX = /^[A-z][A-z0-9-_]{3,23}$/;
 const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%]).{8,24}$/;
 
 // end point for register
-const REGISTER_URL = "/register";
+const SERVER = "http://localhost:3500/user";
 
 function Register() {
   // User input > allow us to set the focus on the user input, when the component loads.
@@ -36,23 +38,14 @@ function Register() {
   const [errMsg, setErrMsg] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // setting focus when the component loads ONLY []
-  // Uncaught TypeError: Cannot read properties of undefined (reading 'focus') -> if no ref={userRef} inside input
-  // 처음에, useRef() 훅스를 불러온다 -> 빈깡통을 넣는다 -> 내가 focus를 주고 싶은곳을 찾아가서 -> ref값을 넣어준다. -> 리로딩이 되면 -> 태그에 focus를 준다.
-
   useEffect(() => {
     userRef.current.focus();
   }, []);
 
-  // validate user name. anytime, if any changes -> it will check the validation of the field.
-  // 타이핑 치는, 유저가 바뀔 때 마다, 정규 표현식 아이컨이 실시간으로 바뀐다. -> [user] -> setValidName(USER_REGEX.test(user));
   useEffect(() => {
     setValidName(USER_REGEX.test(user));
   }, [user]);
 
-  // why? : 비밀번호 변경이 될때마다, 1. 변화를 인지해줘야함. 2. 컨펌 비밀번호도 변화를 인지 시켜줘야함.
-  // 로딩 될 때마다, [pwd, matchPwd] 변화가 있는지 확인을 먼저 한다.
-  // 변화되는게 있다면, 다시 정규식을 때려서, 새로운 비밀번호를 확인한다. 비밀번호가 컴펀이 되면, state를 변경시켜준다.
   useEffect(() => {
     setValidPwd(PWD_REGEX.test(pwd));
     setValidMatch(pwd === matchPwd);
@@ -64,41 +57,35 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // if button enabled with JS hack
+
     const v1 = USER_REGEX.test(user);
     const v2 = PWD_REGEX.test(pwd);
     if (!v1 || !v2) {
       setErrMsg("Invalid Entry");
       return;
     }
-    // try {
-    //   const response = await axios.post(
-    //     REGISTER_URL,
-    //     JSON.stringify({ user, pwd }),
-    //     {
-    //       headers: { "Content-Type": "application/json" },
-    //       withCredentials: true,
-    //     }
-    //   );
-    //   console.log(response?.data);
-    //   console.log(response?.accessToken);
-    //   console.log(JSON.stringify(response));
-    //   setSuccess(true);
-    //   //clear state and controlled inputs
-    //   //need value attrib on inputs for this
-    //   setUser("");
-    //   setPwd("");
-    //   setMatchPwd("");
-    // } catch (err) {
-    //   if (!err?.response) {
-    //     setErrMsg("No Server Response");
-    //   } else if (err.response?.status === 409) {
-    //     setErrMsg("Username Taken");
-    //   } else {
-    //     setErrMsg("Registration Failed");
-    //   }
-    //   errRef.current.focus();
-    // }
+    try {
+      // Get api -> if user name exists -> show error alerts
+      const { data } = await axios.get(SERVER);
+      const foundUser = data.find((person) => person.user === user);
+
+      if (!foundUser) {
+        await axios.post(SERVER, JSON.stringify({ user, pwd }), {
+          headers: { "Content-Type": "application/json" },
+        });
+
+        setSuccess(true);
+        setUser("");
+        setPwd("");
+        setMatchPwd("");
+      } else {
+        setErrMsg("Username Taken");
+        errRef.current.focus();
+      }
+    } catch (err) {
+      setErrMsg("Registration Failed");
+      errRef.current.focus();
+    }
   };
 
   return (
@@ -107,16 +94,14 @@ function Register() {
         <section>
           <h1>Success!</h1>
           <p>
-            <a href="#">Sign In</a>
+            <Link to="/signin" element={<Login />}>
+              Sign in
+            </Link>
           </p>
         </section>
       ) : (
         <section>
-          <p
-            ref={errRef}
-            className={errMsg ? "errmsg" : "offscreen"}
-            aria-live="assertive"
-          >
+          <p ref={errRef} className={errMsg ? "errmsg" : "offscreen"}>
             {errMsg}
           </p>
           <h1>Register</h1>
@@ -140,10 +125,6 @@ function Register() {
               onChange={(e) => setUser(e.target.value)}
               value={user}
               required
-              aria-invalid={validName ? "false" : "true"}
-              // lets us provide another element that describes the input field
-              // the screen reader will read label -> type -> aria-invalid (true or false)
-              aria-describedby="uidnote"
               onFocus={() => setUserFocus(true)}
               onBlur={() => setUserFocus(false)}
             />
@@ -178,8 +159,6 @@ function Register() {
               onChange={(e) => setPwd(e.target.value)}
               value={pwd}
               required
-              aria-invalid={validPwd ? "false" : "true"}
-              aria-describedby="pwdnote"
               onFocus={() => setPwdFocus(true)}
               onBlur={() => setPwdFocus(false)}
             />
@@ -193,12 +172,7 @@ function Register() {
               Must include uppercase and lowercase letters, a number and a
               special character.
               <br />
-              Allowed special characters:{" "}
-              <span aria-label="exclamation mark">!</span>{" "}
-              <span aria-label="at symbol">@</span>{" "}
-              <span aria-label="hashtag">#</span>{" "}
-              <span aria-label="dollar sign">$</span>{" "}
-              <span aria-label="percent">%</span>
+              Allowed special characters: ! @ # $ %
             </p>
 
             <label htmlFor="confirm_pwd">
@@ -218,8 +192,6 @@ function Register() {
               onChange={(e) => setMatchPwd(e.target.value)}
               value={matchPwd}
               required
-              aria-invalid={validMatch ? "false" : "true"}
-              aria-describedby="confirmnote"
               onFocus={() => setMatchFocus(true)}
               onBlur={() => setMatchFocus(false)}
             />
@@ -244,7 +216,9 @@ function Register() {
             <br />
             <span className="line">
               {/*put router link here*/}
-              <a href="#">Sign In</a>
+              <Link to="/signin" element={<Login />}>
+                Sign in
+              </Link>
             </span>
           </p>
         </section>
